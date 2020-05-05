@@ -28,7 +28,9 @@ Partial Class Form1
         Me.ColumnHeader2 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
         Me.ColumnHeader3 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
         Me.tbPath = New System.Windows.Forms.TextBox()
-        Me.tm = New System.Windows.Forms.Timer(Me.components)
+        Me.tmBuffer = New System.Windows.Forms.Timer(Me.components)
+        Me.OPFD = New System.Windows.Forms.OpenFileDialog()
+        Me.tmTracker = New System.Windows.Forms.Timer(Me.components)
         Me.SuspendLayout()
         '
         'lstLogs
@@ -68,10 +70,16 @@ Partial Class Form1
         Me.tbPath.Size = New System.Drawing.Size(528, 20)
         Me.tbPath.TabIndex = 1
         '
-        'tm
+        'tmBuffer
         '
-        Me.tm.Enabled = True
-        Me.tm.Interval = 1000
+        Me.tmBuffer.Interval = 1000
+        '
+        'OPFD
+        '
+        Me.OPFD.Filter = "MDB Files| *.mdb"
+        '
+        'tmTracker
+        '
         '
         'Form1
         '
@@ -92,5 +100,7 @@ Partial Class Form1
     Friend WithEvents ColumnHeader1 As ColumnHeader
     Friend WithEvents ColumnHeader2 As ColumnHeader
     Friend WithEvents ColumnHeader3 As ColumnHeader
-    Friend WithEvents tm As Timer
+    Friend WithEvents tmBuffer As Timer
+    Friend WithEvents OPFD As OpenFileDialog
+    Friend WithEvents tmTracker As Timer
 End Class
