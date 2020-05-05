@@ -61,7 +61,8 @@ Public Class Form1
         Dim com As New OleDb.OleDbCommand("select * from Emp_InOut order by `date`, `time` desc", Connection)
         Dim rdr As OleDb.OleDbDataReader = com.ExecuteReader()
 
-        Dim previousRecord As String = LastRecord
+        Dim newestRecord As String = LastRecord
+        Dim isFirst As Boolean = True
         While rdr.Read
             Dim _date As String = rdr.Item("date")
             Dim _time As String = rdr.Item("time")
@@ -72,15 +73,17 @@ Public Class Form1
             Dim id As String = rdr.Item("id")
             Dim record As String = String.Format("{0} {1}", id, logDatetime)
 
-            If Not LastRecord = record Then
-                'send
+            If isFirst Then newestRecord = record
+
+            If LastRecord = record Then
+                Exit While
+            Else
                 workers.AddtoQueue({id, logDatetime})
-                previousRecord = record
-            Else   'end
+                newestRecord = record
             End If
         End While
 
-        LastRecord = previousRecord
+        LastRecord = newestRecord
     End Sub
 
 
