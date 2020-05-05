@@ -31,6 +31,7 @@ Partial Class Form1
         Me.tmBuffer = New System.Windows.Forms.Timer(Me.components)
         Me.OPFD = New System.Windows.Forms.OpenFileDialog()
         Me.tmTracker = New System.Windows.Forms.Timer(Me.components)
+        Me.cbSite = New System.Windows.Forms.ComboBox()
         Me.SuspendLayout()
         '
         'lstLogs
@@ -65,9 +66,9 @@ Partial Class Form1
         '
         Me.tbPath.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.tbPath.Location = New System.Drawing.Point(12, 12)
+        Me.tbPath.Location = New System.Drawing.Point(102, 12)
         Me.tbPath.Name = "tbPath"
-        Me.tbPath.Size = New System.Drawing.Size(528, 20)
+        Me.tbPath.Size = New System.Drawing.Size(438, 20)
         Me.tbPath.TabIndex = 1
         '
         'tmBuffer
@@ -81,11 +82,22 @@ Partial Class Form1
         'tmTracker
         '
         '
+        'cbSite
+        '
+        Me.cbSite.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList
+        Me.cbSite.FormattingEnabled = True
+        Me.cbSite.Items.AddRange(New Object() {"MANILA", "LEYTE"})
+        Me.cbSite.Location = New System.Drawing.Point(12, 11)
+        Me.cbSite.Name = "cbSite"
+        Me.cbSite.Size = New System.Drawing.Size(81, 21)
+        Me.cbSite.TabIndex = 2
+        '
         'Form1
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.ClientSize = New System.Drawing.Size(552, 302)
+        Me.Controls.Add(Me.cbSite)
         Me.Controls.Add(Me.tbPath)
         Me.Controls.Add(Me.lstLogs)
         Me.Name = "Form1"
@@ -103,4 +115,5 @@ Partial Class Form1
     Friend WithEvents tmBuffer As Timer
     Friend WithEvents OPFD As OpenFileDialog
     Friend WithEvents tmTracker As Timer
+    Friend WithEvents cbSite As ComboBox
 End Class
