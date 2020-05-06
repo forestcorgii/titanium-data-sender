@@ -81,6 +81,7 @@ Partial Class Form1
         '
         'tmTracker
         '
+        Me.tmTracker.Interval = 5000
         '
         'cbSite
         '

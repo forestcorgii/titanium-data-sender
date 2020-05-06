@@ -25,7 +25,7 @@ Public Class Form1
         ChangeStatus(Status.ToString)
 
         workers = New Workers
-        workers.SetWorker(3)
+        workers.SetWorker(1)
 
         conf = New LogInf
         Dim confPath As String = Path.Combine(Application.StartupPath, Application.ProductName & ".config.xml")
@@ -33,24 +33,25 @@ Public Class Form1
             conf = ConfigurationStoring.XmlSerialization.ReadFromFile(confPath, New LogInf)
             conf.Validate()
 
-            conf.Path = confPath
             workers.AddRangetoQueue(conf.Queues)
 
             LastRecord = conf.LastLog
             tbPath.Text = conf.BioMDBPath
-            start(conf.BioMDBPath)
         End If
+
+        conf.Path = confPath
 
         If File.Exists(conf.Path) Then
             OpenFile(True)
         End If
 
+        start(conf.BioMDBPath)
         cbSite.SelectedIndex = conf.Site
     End Sub
 
     Private Sub Form1_FormClosing(sender As Object, e As FormClosingEventArgs) Handles Me.FormClosing
         Connection.Close()
-        ConfigurationStoring.XmlSerialization.WriteToFile(conf.Path, conf)
+        saveConf()
     End Sub
 
     Private Sub tbPath_MouseDoubleClick(sender As Object, e As MouseEventArgs) Handles tbPath.MouseDoubleClick
@@ -64,7 +65,7 @@ Public Class Form1
             start(tbPath.Text)
 
             conf.BioMDBPath = tbPath.Text
-            ConfigurationStoring.XmlSerialization.WriteToFile(conf.Path, conf)
+            saveConf()
         Else : MsgBox("Invalid BIO MDB Path.")
         End If
     End Sub
@@ -91,30 +92,34 @@ Public Class Form1
     End Sub
 
     Private Sub workers_Worker_DoWork(sender As Object, e As DoWorkEventArgs) Handles workers.Worker_DoWork
-        Dim id As String = e.Argument(0)
-        Dim site As String = e.Argument(2)
-        Dim logDatetime As String = e.Argument(1)
 
-        SendDataLog(id, site, Date.Parse(logDatetime))
+        Try
+            Threading.Thread.Sleep(3000)
+            Dim tiData As TitaniumData = DirectCast(e.Argument, TitaniumData)
+            SendDataLog(tiData)
 
-        lstLogs.Invoke(Sub()
-                           Dim item As New ListViewItem({id, site, logDatetime})
-                           lstLogs.Items.Add(item)
-                       End Sub)
+            lstLogs.Invoke(Sub()
+                               Dim item As New ListViewItem({tiData.bio_id, tiData.site, tiData.added_ts})
+                               lstLogs.Items.Add(item)
+                           End Sub)
+        Catch ex As Exception
+            MsgBox(ex.Message)
+        End Try
     End Sub
 
     Private Sub workers_Worker_RunWorkerCompleted(sender As Object, e As RunWorkerCompletedEventArgs) Handles workers.Worker_RunWorkerCompleted
-        conf.Queues = workers.QueueArgs
-        ConfigurationStoring.XmlSerialization.WriteToFile(conf.Path, conf)
+        conf.AddQueues(workers.QueueArgs)
     End Sub
 
 
 
     Private Sub start(path)
-        OpenMDBConnection(path)
-        tmBuffer.Enabled = True
-        tmTracker.Enabled = True
-        Status.Running = True
+        If File.Exists(path) Then
+            OpenMDBConnection(path)
+            tmBuffer.Enabled = True
+            tmTracker.Enabled = True
+            Status.Running = True
+        End If
     End Sub
 
     Private LastRecord As String
@@ -127,42 +132,48 @@ Public Class Form1
             While rdr.Read
                 Dim _date As String = rdr.Item("Date")
                 Dim _time As String = rdr.Item("Time_In")
-                Dim logDatetime As String = String.Format("20{0}-{1}-{2} {3}:{4}", _date.Substring(0, 2),
+                Dim logDatetime As String = String.Format("20{0}-{1}-{2} {3}:{4}:00", _date.Substring(0, 2),
                                                       _date.Substring(2, 2), _date.Substring(4, 2),
                                                       _time.Substring(0, 2), _time.Substring(2, 2))
 
                 Dim id As String = rdr.Item("id")
                 Dim record As String = String.Format("{0} {1}", id, logDatetime)
 
-                If isFirst Then newestRecord = record
+                If isFirst Then
+                    newestRecord = record
+                    isFirst = False
+                End If
 
                 If LastRecord = record Then
                     Exit While
                 Else
-                    workers.AddtoQueue({id, logDatetime, cbSite.Text})
-                    newestRecord = record
+                    workers.AddtoQueue(New TitaniumData With {.bio_id = id, .added_ts = logDatetime, .site = cbSite.Text})
                 End If
             End While
 
             If Not LastRecord = newestRecord Then
                 LastRecord = newestRecord
                 conf.LastLog = LastRecord
-                ConfigurationStoring.XmlSerialization.WriteToFile(conf.Path, conf)
+                saveConf()
             End If
         End Using
     End Sub
 
 
-    Private Function SendDataLog(id As String, site As String, date_added As Date) As Boolean
+    Private Function SendDataLog(tiData As TitaniumData) As Boolean
         Dim responseFromServer As String = ""
         Dim failcnt As Short = 0
 
-        Dim l As New TitaniumData With {.id = id, .site = site, .date_added = date_added}
-        Dim postData As String = "postData= " & JsonConvert.SerializeObject(l, Formatting.Indented)
+        With tiData
+            .token = "bf3d9e0a7bfc4ffa9765641530c49242"
+            .action = "insert"
+        End With
+
+        Dim postData As String = "postData= " & JsonConvert.SerializeObject(tiData, Formatting.Indented)
 
         While True
             Try
-                responseFromServer = SendAPIMessage(postData, "")
+                responseFromServer = SendAPIMessage(postData, "http://idcsi-officesuites.com:8082/upsg/bio_api/API_Receiver")
                 If responseFromServer.Contains("Message sent") = False Then
                     If failcnt >= 10 Then
                         Return False
@@ -229,6 +240,12 @@ Public Class Form1
         End While
     End Sub
 
+    Private Sub saveConf()
+        If Not conf.Path = "" Then
+            ConfigurationStoring.XmlSerialization.WriteToFile(conf.Path, conf)
+        End If
+    End Sub
+
 
 End Class
 
@@ -246,9 +263,11 @@ Public Class Statuses
 End Class
 
 Public Class TitaniumData
-    Public id As String
+    Public token As String
+    Public action As String
     Public site As String
-    Public date_added As Date
+    Public bio_id As String
+    Public added_ts As String
 End Class
 
 Public Class LogInf
@@ -257,7 +276,15 @@ Public Class LogInf
     Public BioMDBPath As String = ""
     Public LastLog As String = ""
     Public Site As Integer = 0
-    Public Queues As New List(Of Object)
+    Public Queues As New List(Of TitaniumData)
+
+
+    Public Sub AddQueues(queueArgs As List(Of Object))
+        Queues = New List(Of TitaniumData)
+        For Each args In queueArgs
+            Queues.Add(DirectCast(args, TitaniumData))
+        Next
+    End Sub
 
     Public Sub Validate()
         If Not File.Exists(BioMDBPath) Then
