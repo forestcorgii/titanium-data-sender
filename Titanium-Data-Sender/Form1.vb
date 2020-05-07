@@ -1,6 +1,7 @@
 ﻿Imports System.Net
 Imports System.IO
 Imports System.Text
+Imports System.Text.RegularExpressions
 Imports System.Data.OleDb
 
 Imports Newtonsoft.Json
@@ -16,6 +17,31 @@ Public Class Form1
     Private conf As LogInf
     Private Status As Statuses
 
+    Private WithEvents _backup As BackupLogs
+    Private Property Backup As BackupLogs
+        Get
+            If _backup.day <> Now.Day Then
+                If Not BackupFileInfo.Exists Then
+                    ConfigurationStoring.XmlSerialization.WriteToFile(BackupFileInfo.FullName, New BackupLogs)
+                End If
+                _backup = ConfigurationStoring.XmlSerialization.ReadFromFile(BackupFileInfo.FullName, New BackupLogs)
+                _backup.day = Now.Day
+            End If
+
+            Return _backup
+        End Get
+        Set(value As BackupLogs)
+            _backup = value
+        End Set
+    End Property
+
+
+    Private ReadOnly Property BackupFileInfo As FileInfo
+        Get
+            Return New FileInfo(String.Format("{0}\logs\{1}.config.xml", Application.StartupPath, Now.ToString("yyyy-MM-dd")))
+        End Get
+    End Property
+
 
     Private Sub Form_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         formName = Application.ProductName & " v" & Application.ProductVersion
@@ -27,13 +53,32 @@ Public Class Form1
         workers = New Workers
         workers.SetWorker(1)
 
+        _backup = New BackupLogs
+        If Not BackupFileInfo.Directory.Exists Then
+            BackupFileInfo.Directory.Create()
+        End If
+
+        For i As Integer = 0 To Backup.Count - 1
+            Dim item As BackupItem = Backup(i)
+            If Not item.Message.ToUpper.Contains("SUCCESS") Then
+                workers.AddtoQueue({item.Data, i})
+            Else
+                With item.Data
+                    Dim lstItem As New ListViewItem({ .bio_id, .site, .added_ts, item.Message})
+                    lstLogs.Items.Insert(0, lstItem)
+                End With
+            End If
+        Next
+
         conf = New LogInf
         Dim confPath As String = Path.Combine(Application.StartupPath, Application.ProductName & ".config.xml")
         If File.Exists(confPath) Then
             conf = ConfigurationStoring.XmlSerialization.ReadFromFile(confPath, New LogInf)
             conf.Validate()
 
-            workers.AddRangetoQueue(conf.Queues)
+            For i As Integer = 0 To conf.Queues.Count - 1
+                workers.AddtoQueue({conf.Queues(i), -1})
+            Next
 
             LastRecord = conf.LastLog
             tbPath.Text = conf.BioMDBPath
@@ -47,6 +92,7 @@ Public Class Form1
 
         start(conf.BioMDBPath)
         cbSite.SelectedIndex = conf.Site
+        Status.OnQueues = workers.QueueArgs.Count
     End Sub
 
     Private Sub Form1_FormClosing(sender As Object, e As FormClosingEventArgs) Handles Me.FormClosing
@@ -92,15 +138,24 @@ Public Class Form1
     End Sub
 
     Private Sub workers_Worker_DoWork(sender As Object, e As DoWorkEventArgs) Handles workers.Worker_DoWork
-
         Try
-            Threading.Thread.Sleep(3000)
-            Dim tiData As TitaniumData = DirectCast(e.Argument, TitaniumData)
-            SendDataLog(tiData)
+            Dim tiData As TitaniumData = DirectCast(e.Argument(0), TitaniumData)
+            Dim isNew As Boolean = e.Argument(1) < 0
+
+            Dim item As New ListViewItem({tiData.bio_id, tiData.site, tiData.added_ts})
+            item.ForeColor = Nothing
+            Dim statusSub As New ListViewItem.ListViewSubItem
+            statusSub.Text = SendDataLog(tiData.Clone)
+
+            item.SubItems.Add(statusSub)
 
             lstLogs.Invoke(Sub()
-                               Dim item As New ListViewItem({tiData.bio_id, tiData.site, tiData.added_ts})
-                               lstLogs.Items.Add(item)
+                               lstLogs.Items.Insert(0, item)
+                               If isNew Then
+                                   Backup.Add(New BackupItem With {.Data = tiData.Clone, .Message = statusSub.Text, .TimeSent = Now})
+                               Else
+                                   Backup.Item(e.Argument(1)) = (New BackupItem With {.Data = tiData.Clone, .Message = statusSub.Text, .TimeSent = Now})
+                               End If
                            End Sub)
         Catch ex As Exception
             MsgBox(ex.Message)
@@ -109,7 +164,18 @@ Public Class Form1
 
     Private Sub workers_Worker_RunWorkerCompleted(sender As Object, e As RunWorkerCompletedEventArgs) Handles workers.Worker_RunWorkerCompleted
         conf.AddQueues(workers.QueueArgs)
+        Status.OnQueues = workers.QueueArgs.Count
     End Sub
+
+    Private Sub _backup_ItemChanged() Handles _backup.ItemChanged
+        ConfigurationStoring.XmlSerialization.WriteToFile(BackupFileInfo.FullName, Backup)
+    End Sub
+
+
+
+
+
+
 
 
 
@@ -147,7 +213,7 @@ Public Class Form1
                 If LastRecord = record Then
                     Exit While
                 Else
-                    workers.AddtoQueue(New TitaniumData With {.bio_id = id, .added_ts = logDatetime, .site = cbSite.Text})
+                    workers.AddtoQueue({New TitaniumData With {.bio_id = id, .added_ts = logDatetime, .site = cbSite.Text}, -1})
                 End If
             End While
 
@@ -155,12 +221,13 @@ Public Class Form1
                 LastRecord = newestRecord
                 conf.LastLog = LastRecord
                 saveConf()
+                Status.OnQueues = workers.QueueArgs.Count
             End If
         End Using
     End Sub
 
 
-    Private Function SendDataLog(tiData As TitaniumData) As Boolean
+    Private Function SendDataLog(tiData As TitaniumData) As String
         Dim responseFromServer As String = ""
         Dim failcnt As Short = 0
 
@@ -174,13 +241,17 @@ Public Class Form1
         While True
             Try
                 responseFromServer = SendAPIMessage(postData, "http://idcsi-officesuites.com:8082/upsg/bio_api/API_Receiver")
-                If responseFromServer.Contains("Message sent") = False Then
+                If responseFromServer.ToUpper.Contains("!DOCTYPE") Then
+                    Return Regex.Match(responseFromServer, "(\<body\>)[\w\d\s \<\>\`\=\""\'\/\:\-\(\)\`\,\.\?\;\[\]\!\~\@\#\$\%\^\&\*]+(\<\/body\>)").Value
+                ElseIf responseFromServer.ToUpper.Contains("SUCCESS") _
+                    Or responseFromServer.ToUpper.Contains("FAILED") Then
+
+                    Return responseFromServer
+                Else
                     If failcnt >= 10 Then
-                        Return False
+                        Return responseFromServer
                     End If
                     failcnt += 1
-                Else
-                    Return True
                 End If
                 Return True
             Catch ex As Exception
@@ -263,11 +334,17 @@ Public Class Statuses
 End Class
 
 Public Class TitaniumData
+    Implements ICloneable
+
     Public token As String
     Public action As String
     Public site As String
     Public bio_id As String
     Public added_ts As String
+
+    Public Function Clone() As Object Implements ICloneable.Clone
+        Return Me.MemberwiseClone
+    End Function
 End Class
 
 Public Class LogInf
@@ -282,7 +359,9 @@ Public Class LogInf
     Public Sub AddQueues(queueArgs As List(Of Object))
         Queues = New List(Of TitaniumData)
         For Each args In queueArgs
-            Queues.Add(DirectCast(args, TitaniumData))
+            If args(1) = -1 Then
+                Queues.Add(DirectCast(args(0), TitaniumData))
+            End If
         Next
     End Sub
 
@@ -293,3 +372,21 @@ Public Class LogInf
     End Sub
 End Class
 
+Public Class BackupItem
+    Public Data As TitaniumData
+    Public Message As String
+    Public TimeSent As Date
+End Class
+
+Public Class BackupLogs
+    Inherits List(Of BackupItem)
+    Public Event ItemChanged()
+
+    <System.Xml.Serialization.XmlIgnore> Public day As Integer
+
+    Public Shadows Sub Add(Item As BackupItem)
+        MyBase.Add(Item)
+        RaiseEvent ItemChanged()
+    End Sub
+
+End Class

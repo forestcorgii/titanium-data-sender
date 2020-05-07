@@ -27,6 +27,7 @@ Partial Class Form1
         Me.ColumnHeader1 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
         Me.ColumnHeader2 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
         Me.ColumnHeader3 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
+        Me.ColumnHeader4 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
         Me.tbPath = New System.Windows.Forms.TextBox()
         Me.tmBuffer = New System.Windows.Forms.Timer(Me.components)
         Me.OPFD = New System.Windows.Forms.OpenFileDialog()
@@ -39,7 +40,7 @@ Partial Class Form1
         Me.lstLogs.Anchor = CType((((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Bottom) _
             Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.lstLogs.Columns.AddRange(New System.Windows.Forms.ColumnHeader() {Me.ColumnHeader1, Me.ColumnHeader2, Me.ColumnHeader3})
+        Me.lstLogs.Columns.AddRange(New System.Windows.Forms.ColumnHeader() {Me.ColumnHeader1, Me.ColumnHeader2, Me.ColumnHeader3, Me.ColumnHeader4})
         Me.lstLogs.Location = New System.Drawing.Point(12, 38)
         Me.lstLogs.Name = "lstLogs"
         Me.lstLogs.Size = New System.Drawing.Size(528, 252)
@@ -61,6 +62,11 @@ Partial Class Form1
         '
         Me.ColumnHeader3.Text = "Date Added"
         Me.ColumnHeader3.Width = 103
+        '
+        'ColumnHeader4
+        '
+        Me.ColumnHeader4.Text = "Message"
+        Me.ColumnHeader4.Width = 266
         '
         'tbPath
         '
@@ -117,4 +123,5 @@ Partial Class Form1
     Friend WithEvents OPFD As OpenFileDialog
     Friend WithEvents tmTracker As Timer
     Friend WithEvents cbSite As ComboBox
+    Friend WithEvents ColumnHeader4 As ColumnHeader
 End Class
