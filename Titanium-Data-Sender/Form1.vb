@@ -98,6 +98,7 @@ Public Class Form1
     Private Sub Form1_FormClosing(sender As Object, e As FormClosingEventArgs) Handles Me.FormClosing
         Connection.Close()
         saveConf()
+        ConfigurationStoring.XmlSerialization.WriteToFile(BackupFileInfo.FullName, Backup)
     End Sub
 
     Private Sub tbPath_MouseDoubleClick(sender As Object, e As MouseEventArgs) Handles tbPath.MouseDoubleClick
@@ -188,6 +189,12 @@ Public Class Form1
         End If
     End Sub
 
+
+    Private Sub Test()
+        Dim logDatetime As String = Now.ToString("yyyy-MM-dd HH:mm:ss")
+        MsgBox(SendDataLog(New TitaniumData With {.bio_id = "5505", .added_ts = logDatetime, .site = "MANILA"}))
+    End Sub
+
     Private LastRecord As String
     Private Connection As New OleDbConnection()
     Private Sub ReadData()
@@ -198,7 +205,7 @@ Public Class Form1
             While rdr.Read
                 Dim _date As String = rdr.Item("Date")
                 Dim _time As String = rdr.Item("Time_In")
-                Dim logDatetime As String = String.Format("20{0}-{1}-{2} {3}:{4}:00", _date.Substring(0, 2),
+                Dim logDatetime As String = String.Format("20{0}-{1}-{2} {3}:{4}:21", _date.Substring(0, 2),
                                                       _date.Substring(2, 2), _date.Substring(4, 2),
                                                       _time.Substring(0, 2), _time.Substring(2, 2))
 
@@ -236,8 +243,9 @@ Public Class Form1
             .action = "insert"
         End With
 
-        Dim postData As String = "postData= " & JsonConvert.SerializeObject(tiData, Formatting.Indented)
+        Dim postData As String = tiData.ToString 'JsonConvert.SerializeObject(tiData)
 
+        'MsgBox(postData)
         While True
             Try
                 responseFromServer = SendAPIMessage(postData, "http://idcsi-officesuites.com:8082/upsg/bio_api/API_Receiver")
@@ -255,7 +263,8 @@ Public Class Form1
                 End If
                 Return True
             Catch ex As Exception
-                Exit While
+                Return (ex.Message)
+                'Exit While
             End Try
         End While
         Return False
@@ -264,7 +273,7 @@ Public Class Form1
     Public Function SendAPIMessage(PostData As String, Address As String) As String
         Dim w As WebRequest = WebRequest.Create(Address)
         w.Method = "POST"
-        Dim byteArray As Byte() = Encoding.UTF8.GetBytes(PostData)
+        Dim byteArray As Byte() = Encoding.ASCII.GetBytes(PostData)
         w.ContentType = "application/x-www-form-urlencoded"
         w.ContentLength = byteArray.Length
 
@@ -344,6 +353,15 @@ Public Class TitaniumData
 
     Public Function Clone() As Object Implements ICloneable.Clone
         Return Me.MemberwiseClone
+    End Function
+
+    Public Overrides Function ToString() As String
+        Dim postData As String = "token=" & Uri.EscapeDataString(token) &
+            "&action=" & Uri.EscapeDataString(action) &
+            "&site=" & Uri.EscapeDataString(site) &
+            "&bio_id=" & Uri.EscapeDataString(bio_id) &
+            "&added_ts=" & Uri.EscapeDataString(added_ts)
+        Return postData
     End Function
 End Class
 
