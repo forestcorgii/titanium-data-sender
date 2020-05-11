@@ -32,6 +32,7 @@ Partial Class Form1
         Me.tmBuffer = New System.Windows.Forms.Timer(Me.components)
         Me.OPFD = New System.Windows.Forms.OpenFileDialog()
         Me.tmTracker = New System.Windows.Forms.Timer(Me.components)
+        Me.btnFilter = New System.Windows.Forms.Button()
         Me.cbSite = New System.Windows.Forms.ComboBox()
         Me.SuspendLayout()
         '
@@ -41,9 +42,9 @@ Partial Class Form1
             Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.lstLogs.Columns.AddRange(New System.Windows.Forms.ColumnHeader() {Me.ColumnHeader1, Me.ColumnHeader2, Me.ColumnHeader3, Me.ColumnHeader4})
-        Me.lstLogs.Location = New System.Drawing.Point(12, 38)
+        Me.lstLogs.Location = New System.Drawing.Point(12, 65)
         Me.lstLogs.Name = "lstLogs"
-        Me.lstLogs.Size = New System.Drawing.Size(528, 252)
+        Me.lstLogs.Size = New System.Drawing.Size(528, 225)
         Me.lstLogs.TabIndex = 0
         Me.lstLogs.UseCompatibleStateImageBehavior = False
         Me.lstLogs.View = System.Windows.Forms.View.Details
@@ -72,9 +73,9 @@ Partial Class Form1
         '
         Me.tbPath.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.tbPath.Location = New System.Drawing.Point(102, 12)
+        Me.tbPath.Location = New System.Drawing.Point(12, 39)
         Me.tbPath.Name = "tbPath"
-        Me.tbPath.Size = New System.Drawing.Size(438, 20)
+        Me.tbPath.Size = New System.Drawing.Size(528, 20)
         Me.tbPath.TabIndex = 1
         '
         'tmBuffer
@@ -89,12 +90,21 @@ Partial Class Form1
         '
         Me.tmTracker.Interval = 5000
         '
+        'btnFilter
+        '
+        Me.btnFilter.Location = New System.Drawing.Point(99, 10)
+        Me.btnFilter.Name = "btnFilter"
+        Me.btnFilter.Size = New System.Drawing.Size(75, 23)
+        Me.btnFilter.TabIndex = 4
+        Me.btnFilter.Text = "Filter"
+        Me.btnFilter.UseVisualStyleBackColor = True
+        '
         'cbSite
         '
         Me.cbSite.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList
         Me.cbSite.FormattingEnabled = True
         Me.cbSite.Items.AddRange(New Object() {"MANILA", "LEYTE"})
-        Me.cbSite.Location = New System.Drawing.Point(12, 11)
+        Me.cbSite.Location = New System.Drawing.Point(12, 12)
         Me.cbSite.Name = "cbSite"
         Me.cbSite.Size = New System.Drawing.Size(81, 21)
         Me.cbSite.TabIndex = 2
@@ -104,6 +114,7 @@ Partial Class Form1
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.ClientSize = New System.Drawing.Size(552, 302)
+        Me.Controls.Add(Me.btnFilter)
         Me.Controls.Add(Me.cbSite)
         Me.Controls.Add(Me.tbPath)
         Me.Controls.Add(Me.lstLogs)
@@ -122,6 +133,7 @@ Partial Class Form1
     Friend WithEvents tmBuffer As Timer
     Friend WithEvents OPFD As OpenFileDialog
     Friend WithEvents tmTracker As Timer
-    Friend WithEvents cbSite As ComboBox
     Friend WithEvents ColumnHeader4 As ColumnHeader
+    Friend WithEvents btnFilter As Button
+    Friend WithEvents cbSite As ComboBox
 End Class

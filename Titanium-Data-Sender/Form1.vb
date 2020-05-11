@@ -8,6 +8,7 @@ Imports Newtonsoft.Json
 Imports System.ComponentModel
 
 Imports SEAN
+Imports Titanium_Data_Sender.Classes
 
 Public Class Form1
     Private formName As String
@@ -15,6 +16,8 @@ Public Class Form1
     Private WithEvents workers As Workers
 
     Private conf As LogInf
+    Private confPath As String
+
     Private Status As Statuses
 
     Private WithEvents _backup As BackupLogs
@@ -71,7 +74,7 @@ Public Class Form1
         Next
 
         conf = New LogInf
-        Dim confPath As String = Path.Combine(Application.StartupPath, Application.ProductName & ".config.xml")
+        confPath = Path.Combine(Application.StartupPath, Application.ProductName & ".config.xml")
         If File.Exists(confPath) Then
             conf = ConfigurationStoring.XmlSerialization.ReadFromFile(confPath, New LogInf)
             conf.Validate()
@@ -92,6 +95,7 @@ Public Class Form1
 
         start(conf.BioMDBPath)
         cbSite.SelectedIndex = conf.Site
+        'lbSite.Text = "Site: " & cbSite.Text
         Status.OnQueues = workers.QueueArgs.Count
     End Sub
 
@@ -115,6 +119,17 @@ Public Class Form1
             saveConf()
         Else : MsgBox("Invalid BIO MDB Path.")
         End If
+    End Sub
+
+    Private Sub btnFilter_Click(sender As Object, e As EventArgs) Handles btnFilter.Click
+        workers.StopWorking()
+        Using filter As New frmSettings(conf)
+            If filter.ShowDialog() = DialogResult.Yes Then
+                conf = filter.Conf
+                saveConf()
+            End If
+        End Using
+        workers.StartWorking()
     End Sub
 
     Private Sub cbSite_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cbSite.SelectedIndexChanged
@@ -196,43 +211,6 @@ Public Class Form1
     End Sub
 
     Private LastRecord As String
-    Private Connection As New OleDbConnection()
-    Private Sub ReadData()
-        Dim com As New OleDb.OleDbCommand("select * from Emp_InOut order by `Date`, `Time_In` desc", Connection)
-        Using rdr As OleDb.OleDbDataReader = com.ExecuteReader()
-            Dim newestRecord As String = LastRecord
-            Dim isFirst As Boolean = True
-            While rdr.Read
-                Dim _date As String = rdr.Item("Date")
-                Dim _time As String = rdr.Item("Time_In")
-                Dim logDatetime As String = String.Format("20{0}-{1}-{2} {3}:{4}:21", _date.Substring(0, 2),
-                                                      _date.Substring(2, 2), _date.Substring(4, 2),
-                                                      _time.Substring(0, 2), _time.Substring(2, 2))
-
-                Dim id As String = rdr.Item("id")
-                Dim record As String = String.Format("{0} {1}", id, logDatetime)
-
-                If isFirst Then
-                    newestRecord = record
-                    isFirst = False
-                End If
-
-                If LastRecord = record Then
-                    Exit While
-                Else
-                    workers.AddtoQueue({New TitaniumData With {.bio_id = id, .added_ts = logDatetime, .site = cbSite.Text}, -1})
-                End If
-            End While
-
-            If Not LastRecord = newestRecord Then
-                LastRecord = newestRecord
-                conf.LastLog = LastRecord
-                saveConf()
-                Status.OnQueues = workers.QueueArgs.Count
-            End If
-        End Using
-    End Sub
-
 
     Private Function SendDataLog(tiData As TitaniumData) As String
         Dim responseFromServer As String = ""
@@ -293,6 +271,79 @@ Public Class Form1
         Return responseFromServer
     End Function
 
+
+    Private Sub ChangeStatus(message As String)
+        Me.Text = formName & " - " & message
+    End Sub
+
+
+    Private Sub saveConf()
+        If Not conf.Path = "" Then
+            ConfigurationStoring.XmlSerialization.WriteToFile(conf.Path, conf)
+        End If
+    End Sub
+
+
+#Region "database"
+    Private Connection As New OleDbConnection()
+
+    Private Sub ReadData()
+        Dim com As New OleDb.OleDbCommand("select * from Emp_InOut order by `Date`, `Time_In` desc", Connection)
+        Using rdr As OleDb.OleDbDataReader = com.ExecuteReader()
+            Dim newestRecord As String = LastRecord
+            Dim isFirst As Boolean = True
+            While rdr.Read
+                Dim _date As String = rdr.Item("Date")
+                Dim _time As String = rdr.Item("Time_In")
+                Dim logDatetime As String = String.Format("20{0}-{1}-{2} {3}:{4}:21", _date.Substring(0, 2),
+                                                      _date.Substring(2, 2), _date.Substring(4, 2),
+                                                      _time.Substring(0, 2), _time.Substring(2, 2))
+
+                Dim id As String = rdr.Item("id")
+                Dim record As String = String.Format("{0} {1}", id, logDatetime)
+
+                If isFirst Then
+                    newestRecord = record
+                    isFirst = False
+                End If
+
+                If LastRecord = record Then
+                    Exit While
+                Else
+                    Dim department As String = Lookup(id, "Department")
+                    If department IsNot Nothing AndAlso conf.Departments.Contains(department) Then
+                        workers.AddtoQueue({New TitaniumData With {.bio_id = id, .added_ts = logDatetime, .site = cbSite.Text}, -1})
+                    End If
+                End If
+            End While
+
+            If Not LastRecord = newestRecord Then
+                LastRecord = newestRecord
+                conf.LastLog = LastRecord
+                saveConf()
+                Status.OnQueues = workers.QueueArgs.Count
+            End If
+        End Using
+    End Sub
+
+    Private Function Lookup(id As String, targetField As String) As String
+        Dim com As New OleDb.OleDbCommand(String.Format("select top 1 `{0}` from `Profile` where id={1}", targetField, id), Connection)
+        Using rdr As OleDb.OleDbDataReader = com.ExecuteReader()
+            While rdr.Read
+                Return rdr.Item(targetField)
+            End While
+        End Using
+        Return Nothing
+    End Function
+    Private Sub OpenFile(Optional persist = False)
+        While Not Status.Connected
+            If OPFD.ShowDialog = DialogResult.OK Then
+                tbPath.Text = OPFD.FileName
+            End If
+            If Not persist Then Exit While
+        End While
+    End Sub
+
     Private Sub OpenMDBConnection(path As String)
         Try
             Dim providerFormat As String = "Provider=Microsoft.JET.OLEDB.4.0;Data Source={0};User Id={1};Password={2};"
@@ -307,104 +358,8 @@ Public Class Form1
         End Try
     End Sub
 
-    Private Sub ChangeStatus(message As String)
-        Me.Text = formName & " - " & message
-    End Sub
 
-    Private Sub OpenFile(Optional persist = False)
-        While Not Status.Connected
-            If OPFD.ShowDialog = DialogResult.OK Then
-                tbPath.Text = OPFD.FileName
-            End If
-            If Not persist Then Exit While
-        End While
-    End Sub
-
-    Private Sub saveConf()
-        If Not conf.Path = "" Then
-            ConfigurationStoring.XmlSerialization.WriteToFile(conf.Path, conf)
-        End If
-    End Sub
-
+#End Region
 
 End Class
 
-Public Class Statuses
-    Public Running As Boolean
-    Public Connected As Boolean
-    Public OnQueues As Integer
-
-    Public Overrides Function ToString() As String
-        Return String.Format("{0} On Queue[{1}] {2}",
-                             IIf(Connected, "Connected", "Not Connected"),
-                             OnQueues,
-                              IIf(Running, "Running", "Stand By"))
-    End Function
-End Class
-
-Public Class TitaniumData
-    Implements ICloneable
-
-    Public token As String
-    Public action As String
-    Public site As String
-    Public bio_id As String
-    Public added_ts As String
-
-    Public Function Clone() As Object Implements ICloneable.Clone
-        Return Me.MemberwiseClone
-    End Function
-
-    Public Overrides Function ToString() As String
-        Dim postData As String = "token=" & Uri.EscapeDataString(token) &
-            "&action=" & Uri.EscapeDataString(action) &
-            "&site=" & Uri.EscapeDataString(site) &
-            "&bio_id=" & Uri.EscapeDataString(bio_id) &
-            "&added_ts=" & Uri.EscapeDataString(added_ts)
-        Return postData
-    End Function
-End Class
-
-Public Class LogInf
-    <System.Xml.Serialization.XmlIgnore>
-    Public Path As String = ""
-    Public BioMDBPath As String = ""
-    Public LastLog As String = ""
-    Public Site As Integer = 0
-    Public Queues As New List(Of TitaniumData)
-
-
-    Public Sub AddQueues(queueArgs As List(Of Object))
-        Queues = New List(Of TitaniumData)
-        For Each args In queueArgs
-            If args(1) = -1 Then
-                Queues.Add(DirectCast(args(0), TitaniumData))
-            End If
-        Next
-    End Sub
-
-    Public Sub Validate()
-        If Not File.Exists(BioMDBPath) Then
-            BioMDBPath = ""
-        End If
-    End Sub
-End Class
-
-Public Class BackupItem
-    Public Data As TitaniumData
-    Public Message As String
-    Public TimeSent As Date
-End Class
-
-Public Class BackupLogs
-    Inherits List(Of BackupItem)
-    Public Event ItemChanged()
-
-    <System.Xml.Serialization.XmlIgnore> Public day As Integer
-
-    Public Shadows Sub Add(Item As BackupItem)
-        MyBase.Add(Item)
-        RaiseEvent ItemChanged()
-    End Sub
-
-End Class
