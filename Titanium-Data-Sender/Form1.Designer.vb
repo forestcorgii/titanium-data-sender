@@ -28,7 +28,6 @@ Partial Class Form1
         Me.ColumnHeader2 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
         Me.ColumnHeader3 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
         Me.ColumnHeader4 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
-        Me.tbPath = New System.Windows.Forms.TextBox()
         Me.tmBuffer = New System.Windows.Forms.Timer(Me.components)
         Me.OPFD = New System.Windows.Forms.OpenFileDialog()
         Me.tmTracker = New System.Windows.Forms.Timer(Me.components)
@@ -42,9 +41,9 @@ Partial Class Form1
             Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.lstLogs.Columns.AddRange(New System.Windows.Forms.ColumnHeader() {Me.ColumnHeader1, Me.ColumnHeader2, Me.ColumnHeader3, Me.ColumnHeader4})
-        Me.lstLogs.Location = New System.Drawing.Point(12, 65)
+        Me.lstLogs.Location = New System.Drawing.Point(12, 39)
         Me.lstLogs.Name = "lstLogs"
-        Me.lstLogs.Size = New System.Drawing.Size(528, 225)
+        Me.lstLogs.Size = New System.Drawing.Size(528, 251)
         Me.lstLogs.TabIndex = 0
         Me.lstLogs.UseCompatibleStateImageBehavior = False
         Me.lstLogs.View = System.Windows.Forms.View.Details
@@ -68,15 +67,6 @@ Partial Class Form1
         '
         Me.ColumnHeader4.Text = "Message"
         Me.ColumnHeader4.Width = 266
-        '
-        'tbPath
-        '
-        Me.tbPath.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
-            Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.tbPath.Location = New System.Drawing.Point(12, 39)
-        Me.tbPath.Name = "tbPath"
-        Me.tbPath.Size = New System.Drawing.Size(528, 20)
-        Me.tbPath.TabIndex = 1
         '
         'tmBuffer
         '
@@ -116,17 +106,14 @@ Partial Class Form1
         Me.ClientSize = New System.Drawing.Size(552, 302)
         Me.Controls.Add(Me.btnFilter)
         Me.Controls.Add(Me.cbSite)
-        Me.Controls.Add(Me.tbPath)
         Me.Controls.Add(Me.lstLogs)
         Me.Name = "Form1"
         Me.Text = "Titanium Data Sender"
         Me.ResumeLayout(False)
-        Me.PerformLayout()
 
     End Sub
 
     Friend WithEvents lstLogs As ListView
-    Friend WithEvents tbPath As TextBox
     Friend WithEvents ColumnHeader1 As ColumnHeader
     Friend WithEvents ColumnHeader2 As ColumnHeader
     Friend WithEvents ColumnHeader3 As ColumnHeader

@@ -23,6 +23,7 @@ Public Class Classes
         Public action As String
         Public site As String
         Public bio_id As String
+        Public idNo As String
         Public added_ts As String
 
         Public Function Clone() As Object Implements ICloneable.Clone
@@ -34,19 +35,21 @@ Public Class Classes
             "&action=" & Uri.EscapeDataString(action) &
             "&site=" & Uri.EscapeDataString(site) &
             "&bio_id=" & Uri.EscapeDataString(bio_id) &
-            "&added_ts=" & Uri.EscapeDataString(added_ts)
+            "&added_ts=" & Uri.EscapeDataString(added_ts) &
+            "&idNo=" & Uri.EscapeDataString(idNo)
             Return postData
         End Function
     End Class
 
     Public Class LogInf
+        Const defaultAPIPath As String = "http://idcsi-officesuites.com:8082/upsg/bio_api/API_Receiver"
+
         <System.Xml.Serialization.XmlIgnore>
         Public Path As String = ""
-        Public BioMDBPath As String = ""
         Public LastLog As String = ""
         Public Site As Integer = 0
         Public Queues As New List(Of TitaniumData)
-        Public Departments As List(Of String)
+        Public DepartmentIds As List(Of Integer)
 
         Public Sub AddQueues(queueArgs As List(Of Object))
             Queues = New List(Of TitaniumData)
@@ -55,12 +58,6 @@ Public Class Classes
                     Queues.Add(DirectCast(args(0), TitaniumData))
                 End If
             Next
-        End Sub
-
-        Public Sub Validate()
-            If Not File.Exists(BioMDBPath) Then
-                BioMDBPath = ""
-            End If
         End Sub
     End Class
 

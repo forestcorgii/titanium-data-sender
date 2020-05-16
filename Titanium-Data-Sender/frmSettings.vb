@@ -11,7 +11,7 @@ Public Class frmSettings
         ' Add any initialization after the InitializeComponent() call.
         Conf = _conf
         cbSite.SelectedIndex = _conf.Site
-        For Each department As String In _conf.Departments
+        For Each department As String In _conf.DepartmentIds
             tbDepartments.Text += department & vbNewLine
         Next
         tbDepartments.Text = tbDepartments.Text.TrimEnd
@@ -19,7 +19,9 @@ Public Class frmSettings
     End Sub
 
     Private Sub frmSettings_FormClosing(sender As Object, e As FormClosingEventArgs) Handles Me.FormClosing
-        Conf.Departments.AddRange(tbDepartments.Lines)
+        For Each deptid As String In tbDepartments.Lines
+            Conf.DepartmentIds.Add(deptid)
+        Next
 
         Dim ask As DialogResult = MsgBox("Save?", MsgBoxStyle.YesNoCancel)
         If ask = DialogResult.Yes Then
