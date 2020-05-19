@@ -56,23 +56,6 @@ Public Class Form1
         workers = New Workers
         workers.SetWorker(1)
 
-        _backup = New BackupLogs
-        If Not BackupFileInfo.Directory.Exists Then
-            BackupFileInfo.Directory.Create()
-        End If
-
-        For i As Integer = 0 To Backup.Count - 1
-            Dim item As BackupItem = Backup(i)
-            If Not item.Message.ToUpper.Contains("SUCCESS") Then
-                workers.AddtoQueue({item.Data, i})
-            Else
-                With item.Data
-                    Dim lstItem As New ListViewItem({ .bio_id, .site, .added_ts, item.Message})
-                    lstLogs.Items.Insert(0, lstItem)
-                End With
-            End If
-        Next
-
         conf = New LogInf
         confPath = Path.Combine(Application.StartupPath, Application.ProductName & ".config.xml")
         If File.Exists(confPath) Then
@@ -87,24 +70,26 @@ Public Class Form1
 
         conf.Path = confPath
 
-        If File.Exists(conf.Path) Then
-            'OpenFile(True)
+        If Not setup() Then Me.Close() : Exit Sub
+
+        _backup = New BackupLogs
+        If Not BackupFileInfo.Directory.Exists Then
+            BackupFileInfo.Directory.Create()
         End If
+
 
         start()
         cbSite.SelectedIndex = conf.Site
         Status.OnQueues = workers.QueueArgs.Count
-
-        While Not setup()
-            MsgBox("Error Titanium Path", MsgBoxStyle.Critical)
-        End While
     End Sub
 
     Private Sub Form1_FormClosing(sender As Object, e As FormClosingEventArgs) Handles Me.FormClosing
         TimekeeperConnection.Close()
         MasterfileConnection.Close()
         saveConf()
-        ConfigurationStoring.XmlSerialization.WriteToFile(BackupFileInfo.FullName, Backup)
+        If _backup IsNot Nothing Then
+            ConfigurationStoring.XmlSerialization.WriteToFile(BackupFileInfo.FullName, Backup)
+        End If
     End Sub
 
     Private Sub btnFilter_Click(sender As Object, e As EventArgs) Handles btnFilter.Click
@@ -143,6 +128,12 @@ Public Class Form1
         tmTracker.Enabled = True
     End Sub
 
+    Private Sub tmResender_Tick(sender As Object, e As EventArgs) Handles tmResender.Tick
+        tmResender.Enabled = False
+        Resend()
+        tmResender.Enabled = True
+    End Sub
+
     Private Sub workers_Worker_DoWork(sender As Object, e As DoWorkEventArgs) Handles workers.Worker_DoWork
         Try
             Dim tiData As TitaniumData = DirectCast(e.Argument(0), TitaniumData)
@@ -151,15 +142,16 @@ Public Class Form1
             Dim item As New ListViewItem({tiData.bio_id, tiData.site, tiData.added_ts})
             item.ForeColor = Nothing
             Dim statusSub As New ListViewItem.ListViewSubItem
-            statusSub.Text = "test" ' SendDataLog(tiData.Clone)
+            statusSub.Text = SendDataLog(tiData.Clone)
 
             item.SubItems.Add(statusSub)
 
             lstLogs.Invoke(Sub()
-                               lstLogs.Items.Insert(0, item)
                                If isNew Then
+                                   lstLogs.Items.Insert(0, item)
                                    Backup.Add(New BackupItem With {.Data = tiData.Clone, .Message = statusSub.Text, .TimeSent = Now})
                                Else
+                                   If statusSub.Text.ToUpper.Contains("SUCCESS") Then lstLogs.Items.Insert(0, item)
                                    Backup.Item(e.Argument(1)) = (New BackupItem With {.Data = tiData.Clone, .Message = statusSub.Text, .TimeSent = Now})
                                End If
                            End Sub)
@@ -184,21 +176,32 @@ Public Class Form1
     Dim masterfiles As FileInfo
     Dim timekeeper As FileInfo
     Private Function setup() As Boolean
-        Dim timekeeperdir As String = Path.Combine(Environment.ExpandEnvironmentVariables("%ProgramFiles(x86)%"), "Titanium", "Timekeeper")
-        masterfiles = New FileInfo(timekeeperdir & "\masterfiles.mdb")
-        timekeeper = New FileInfo(timekeeperdir & "\timekeeper.mdb")
-        If Not (masterfiles.Exists And timekeeper.Exists) Then
-            Return False
-        End If
+        While True
+            Dim timekeeperdir As String = Path.Combine(Environment.ExpandEnvironmentVariables("%ProgramFiles(x86)%"), "Titanium", "Timekeeper")
+pop:        masterfiles = New FileInfo(timekeeperdir & "\masterfiles.mdb")
+            timekeeper = New FileInfo(timekeeperdir & "\timekeeper.mdb")
+            If Not (masterfiles.Exists And timekeeper.Exists) Then
+                MsgBox("Default titanium path not found, please select a valid titanium path", MsgBoxStyle.Critical)
+                If FBD.ShowDialog = DialogResult.OK Then
+                    timekeeperdir = Path.Combine(FBD.SelectedPath, "Timekeeper")
+                    GoTo pop
+                Else
+                    Return False
+                End If
+            End If
 
-        DatabaseManagement.MDBConfiguration.Open(masterfiles.FullName, MasterfileConnection)
-        DatabaseManagement.MDBConfiguration.Open(timekeeper.FullName, TimekeeperConnection)
-        Status.Connected = True
-
+            DatabaseManagement.MDBConfiguration.Open(masterfiles.FullName, MasterfileConnection)
+            DatabaseManagement.MDBConfiguration.Open(timekeeper.FullName, TimekeeperConnection)
+            Status.Connected = True
+            Exit While
+        End While
         Return True
     End Function
 
     Private Sub start()
+        tmResender.Interval = 1000 * 15
+
+        tmResender.Enabled = True
         tmBuffer.Enabled = True
         tmTracker.Enabled = True
         Status.Running = True
@@ -206,8 +209,12 @@ Public Class Form1
 
 
     Private Sub Test()
+        'DatabaseManagement.MDBConfiguration.Open("D:\timekeeper.mdb", TimekeeperConnection)
+        'Dim da = DatabaseManagement.MDBConfiguration.getTables(TimekeeperConnection)
+        'Console.Write("Asda")
+
         Dim logDatetime As String = Now.ToString("yyyy-MM-dd HH:mm:ss")
-        MsgBox(SendDataLog(New TitaniumData With {.bio_id = "5505", .added_ts = logDatetime, .site = "MANILA"}))
+        MsgBox(SendDataLog(New TitaniumData With {.bio_id = Lookup("13", "idno"), .added_ts = logDatetime, .site = "MANILA"}))
     End Sub
 
     Private LastRecord As String
@@ -271,6 +278,19 @@ Public Class Form1
         Return responseFromServer
     End Function
 
+    Private Sub Resend()
+        For i As Integer = 0 To Backup.Count - 1
+            Dim item As BackupItem = Backup(i)
+            If Not item.Message.ToUpper.Contains("SUCCESS") Then
+                workers.AddtoQueue({item.Data, i})
+            Else
+                With item.Data
+                    Dim lstItem As New ListViewItem({ .bio_id, .site, .added_ts, item.Message})
+                    lstLogs.Items.Insert(0, lstItem)
+                End With
+            End If
+        Next
+    End Sub
 
     Private Sub ChangeStatus(message As String)
         Me.Text = formName & " - " & message
@@ -278,7 +298,7 @@ Public Class Form1
 
 
     Private Sub saveConf()
-        If Not conf.Path = "" Then
+        If conf IsNot Nothing AndAlso Not conf.Path = "" Then
             ConfigurationStoring.XmlSerialization.WriteToFile(conf.Path, conf)
         End If
     End Sub
@@ -289,12 +309,13 @@ Public Class Form1
     Private MasterfileConnection As New OleDbConnection()
 
     Private Sub ReadData()
+        '   Dim com As New OleDb.OleDbCommand("SELECT * FROM `timecard` ORDER BY `timecardid` DESC", TimekeeperConnection)
         Dim com As New OleDb.OleDbCommand(String.Format("SELECT * FROM `timecard` WHERE `trandate` BETWEEN '{0}' AND '{1}' ORDER BY `timecardid` DESC",
-                                                        Now.ToString("yyyyMMdd"),
-                                                        Now.AddDays(-1).ToString("yyyyMMdd")),
-                                                        TimekeeperConnection)
+       Now.ToString("yyyyMMdd"),
+                                                       Now.AddDays(-1).ToString("yyyyMMdd")),
+                                                       TimekeeperConnection)
 
-        Dim d As New List(Of String)
+        ' Dim d As New List(Of String)
 
         Using rdr As OleDb.OleDbDataReader = com.ExecuteReader()
 
@@ -315,7 +336,7 @@ Public Class Form1
                     isFirst = False
                 End If
 
-                d.Add(record)
+                '      d.Add(record)
                 If LastRecord = record Then
                     Exit While
                 Else
@@ -326,8 +347,8 @@ Public Class Form1
                         End If
                     End If
                     Dim dt As New TitaniumData With {.bio_id = Lookup(id, "idno"), .added_ts = logDatetime, .site = cbSite.Text}
-                        workers.AddtoQueue({dt, -1})
-                    End If
+                    workers.AddtoQueue({dt, -1})
+                End If
             End While
 
             If Not LastRecord = newestRecord Then
@@ -348,6 +369,12 @@ Public Class Form1
         End Using
         Return Nothing
     End Function
+
+    Private Sub Form1_KeyDown(sender As Object, e As KeyEventArgs) Handles Me.KeyDown
+        If e.KeyCode = Keys.T Then
+            Test()
+        End If
+    End Sub
 
 
 

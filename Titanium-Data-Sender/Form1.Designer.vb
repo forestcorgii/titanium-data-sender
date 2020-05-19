@@ -33,6 +33,8 @@ Partial Class Form1
         Me.tmTracker = New System.Windows.Forms.Timer(Me.components)
         Me.btnFilter = New System.Windows.Forms.Button()
         Me.cbSite = New System.Windows.Forms.ComboBox()
+        Me.FBD = New System.Windows.Forms.FolderBrowserDialog()
+        Me.tmResender = New System.Windows.Forms.Timer(Me.components)
         Me.SuspendLayout()
         '
         'lstLogs
@@ -41,6 +43,7 @@ Partial Class Form1
             Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.lstLogs.Columns.AddRange(New System.Windows.Forms.ColumnHeader() {Me.ColumnHeader1, Me.ColumnHeader2, Me.ColumnHeader3, Me.ColumnHeader4})
+        Me.lstLogs.HideSelection = False
         Me.lstLogs.Location = New System.Drawing.Point(12, 39)
         Me.lstLogs.Name = "lstLogs"
         Me.lstLogs.Size = New System.Drawing.Size(528, 251)
@@ -99,6 +102,9 @@ Partial Class Form1
         Me.cbSite.Size = New System.Drawing.Size(81, 21)
         Me.cbSite.TabIndex = 2
         '
+        'tmResender
+        '
+        '
         'Form1
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
@@ -107,6 +113,7 @@ Partial Class Form1
         Me.Controls.Add(Me.btnFilter)
         Me.Controls.Add(Me.cbSite)
         Me.Controls.Add(Me.lstLogs)
+        Me.KeyPreview = True
         Me.Name = "Form1"
         Me.Text = "Titanium Data Sender"
         Me.ResumeLayout(False)
@@ -123,4 +130,6 @@ Partial Class Form1
     Friend WithEvents ColumnHeader4 As ColumnHeader
     Friend WithEvents btnFilter As Button
     Friend WithEvents cbSite As ComboBox
+    Friend WithEvents FBD As FolderBrowserDialog
+    Friend WithEvents tmResender As Timer
 End Class

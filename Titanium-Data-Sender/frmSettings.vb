@@ -19,6 +19,7 @@ Public Class frmSettings
     End Sub
 
     Private Sub frmSettings_FormClosing(sender As Object, e As FormClosingEventArgs) Handles Me.FormClosing
+        Conf.DepartmentIds.Clear()
         For Each deptid As String In tbDepartments.Lines
             Conf.DepartmentIds.Add(deptid)
         Next

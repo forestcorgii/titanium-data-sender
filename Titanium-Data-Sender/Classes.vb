@@ -35,8 +35,8 @@ Public Class Classes
             "&action=" & Uri.EscapeDataString(action) &
             "&site=" & Uri.EscapeDataString(site) &
             "&bio_id=" & Uri.EscapeDataString(bio_id) &
-            "&added_ts=" & Uri.EscapeDataString(added_ts) &
-            "&idNo=" & Uri.EscapeDataString(idNo)
+            "&added_ts=" & Uri.EscapeDataString(added_ts)
+            '"&idNo=" & Uri.EscapeDataString(idNo)
             Return postData
         End Function
     End Class
@@ -49,7 +49,7 @@ Public Class Classes
         Public LastLog As String = ""
         Public Site As Integer = 0
         Public Queues As New List(Of TitaniumData)
-        Public DepartmentIds As List(Of Integer)
+        Public DepartmentIds As New List(Of Integer)
 
         Public Sub AddQueues(queueArgs As List(Of Object))
             Queues = New List(Of TitaniumData)
