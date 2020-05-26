@@ -20,7 +20,7 @@
     <DebugType>full</DebugType>
     <DefineDebug>true</DefineDebug>
     <DefineTrace>true</DefineTrace>
-    <OutputPath>..\..\..\..\2 - Bins\Titanium Data Sender\</OutputPath>
+    <OutputPath>D:\4 - Bins\Titanium Data Sender\</OutputPath>
     <DocumentationFile>Titanium-Data-Sender.xml</DocumentationFile>
     <NoWarn>42016,41999,42017,42018,42019,42032,42036,42020,42021,42022</NoWarn>
   </PropertyGroup>
@@ -30,7 +30,7 @@
     <DefineDebug>false</DefineDebug>
     <DefineTrace>true</DefineTrace>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>D:\4 - Bins\Titanium Data Sender\</OutputPath>
     <DocumentationFile>Titanium-Data-Sender.xml</DocumentationFile>
     <NoWarn>42016,41999,42017,42018,42019,42032,42036,42020,42021,42022</NoWarn>
   </PropertyGroup>
@@ -47,8 +47,17 @@
     <OptionInfer>On</OptionInfer>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="confsaver-xml">
+      <HintPath>D:\4 - Bins\confsaver-xml\confsaver-xml.dll</HintPath>
+    </Reference>
+    <Reference Include="manager-mdb">
+      <HintPath>D:\4 - Bins\manager-mdb\manager-mdb.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>D:\2 - VB.NET Solutions\Titanium-Data-Sender\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="sean-workers">
+      <HintPath>D:\4 - Bins\sean-workers\sean-workers.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
@@ -132,12 +141,6 @@
     </None>
     <None Include="App.config" />
     <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\SEAN\SEAN.vbproj">
-      <Project>{eb98c6fb-8d9d-42cb-8b8e-cd13bd8bff3c}</Project>
-      <Name>SEAN</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
 </Project>

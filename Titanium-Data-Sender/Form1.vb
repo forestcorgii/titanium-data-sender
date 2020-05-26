@@ -7,13 +7,13 @@ Imports System.Data.OleDb
 Imports Newtonsoft.Json
 Imports System.ComponentModel
 
-Imports SEAN
+Imports confsaver_xml
 Imports Titanium_Data_Sender.Classes
 
 Public Class Form1
     Private formName As String
     Private dots As String = ""
-    Private WithEvents workers As Workers
+    Private WithEvents workers As sean_workers.Workers
 
     Private conf As LogInf
     Private confPath As String
@@ -25,9 +25,9 @@ Public Class Form1
         Get
             If _backup.day <> Now.Day Then
                 If Not BackupFileInfo.Exists Then
-                    ConfigurationStoring.XmlSerialization.WriteToFile(BackupFileInfo.FullName, New BackupLogs)
+                    XmlSerialization.WriteToFile(BackupFileInfo.FullName, New BackupLogs)
                 End If
-                _backup = ConfigurationStoring.XmlSerialization.ReadFromFile(BackupFileInfo.FullName, New BackupLogs)
+                _backup = XmlSerialization.ReadFromFile(BackupFileInfo.FullName, New BackupLogs)
                 _backup.day = Now.Day
             End If
 
@@ -53,13 +53,13 @@ Public Class Form1
         Status = New Statuses
         ChangeStatus(Status.ToString)
 
-        workers = New Workers
-        workers.SetWorker(1)
+        workers = New sean_workers.Workers
+        workers.SetWorker(3)
 
         conf = New LogInf
         confPath = Path.Combine(Application.StartupPath, Application.ProductName & ".config.xml")
         If File.Exists(confPath) Then
-            conf = ConfigurationStoring.XmlSerialization.ReadFromFile(confPath, New LogInf)
+            conf = XmlSerialization.ReadFromFile(confPath, New LogInf)
 
             For i As Integer = 0 To conf.Queues.Count - 1
                 workers.AddtoQueue({conf.Queues(i), -1})
@@ -88,7 +88,7 @@ Public Class Form1
         MasterfileConnection.Close()
         saveConf()
         If _backup IsNot Nothing Then
-            ConfigurationStoring.XmlSerialization.WriteToFile(BackupFileInfo.FullName, Backup)
+            XmlSerialization.WriteToFile(BackupFileInfo.FullName, Backup)
         End If
     End Sub
 
@@ -130,7 +130,9 @@ Public Class Form1
 
     Private Sub tmResender_Tick(sender As Object, e As EventArgs) Handles tmResender.Tick
         tmResender.Enabled = False
-        Resend()
+        If workers.QueueArgs.Count = 0 Then
+            Resend()
+        End If
         tmResender.Enabled = True
     End Sub
 
@@ -166,7 +168,7 @@ Public Class Form1
     End Sub
 
     Private Sub _backup_ItemChanged() Handles _backup.ItemChanged
-        ConfigurationStoring.XmlSerialization.WriteToFile(BackupFileInfo.FullName, Backup)
+        XmlSerialization.WriteToFile(BackupFileInfo.FullName, Backup)
     End Sub
 
 
@@ -176,25 +178,35 @@ Public Class Form1
     Dim masterfiles As FileInfo
     Dim timekeeper As FileInfo
     Private Function setup() As Boolean
-        While True
-            Dim timekeeperdir As String = Path.Combine(Environment.ExpandEnvironmentVariables("%ProgramFiles(x86)%"), "Titanium", "Timekeeper")
-pop:        masterfiles = New FileInfo(timekeeperdir & "\masterfiles.mdb")
-            timekeeper = New FileInfo(timekeeperdir & "\timekeeper.mdb")
-            If Not (masterfiles.Exists And timekeeper.Exists) Then
-                MsgBox("Default titanium path not found, please select a valid titanium path", MsgBoxStyle.Critical)
-                If FBD.ShowDialog = DialogResult.OK Then
-                    timekeeperdir = Path.Combine(FBD.SelectedPath, "Timekeeper")
-                    GoTo pop
-                Else
-                    Return False
-                End If
-            End If
 
-            DatabaseManagement.MDBConfiguration.Open(masterfiles.FullName, MasterfileConnection)
-            DatabaseManagement.MDBConfiguration.Open(timekeeper.FullName, TimekeeperConnection)
-            Status.Connected = True
-            Exit While
-        End While
+        For Each defaulttimekeeperdir As String In {Path.Combine(Environment.ExpandEnvironmentVariables("%ProgramFiles(x86)%"), "Titanium", "Timekeeper"), "D:\Titanium"}
+            masterfiles = New FileInfo(defaulttimekeeperdir & "\masterfiles.mdb")
+            timekeeper = New FileInfo(defaulttimekeeperdir & "\timekeeper.mdb")
+            If (masterfiles.Exists And timekeeper.Exists) Then
+                manager_mdb.manager.Open(masterfiles.FullName, MasterfileConnection)
+                manager_mdb.manager.Open(timekeeper.FullName, TimekeeperConnection)
+                Status.Connected = True
+                Return True
+            End If
+        Next
+
+
+        Dim timekeeperdir As String = ""
+pop:    If Not (masterfiles.Exists And timekeeper.Exists) Then
+            MsgBox("Default titanium path not found, please select a valid titanium path", MsgBoxStyle.Critical)
+            If FBD.ShowDialog = DialogResult.OK Then
+                timekeeperdir = Path.Combine(FBD.SelectedPath, "Timekeeper")
+                masterfiles = New FileInfo(timekeeperdir & "\masterfiles.mdb")
+                timekeeper = New FileInfo(timekeeperdir & "\timekeeper.mdb")
+                GoTo pop
+            Else
+                Return False
+            End If
+        End If
+
+        manager_mdb.manager.Open(masterfiles.FullName, MasterfileConnection)
+        manager_mdb.manager.Open(timekeeper.FullName, TimekeeperConnection)
+        Status.Connected = True
         Return True
     End Function
 
@@ -241,7 +253,7 @@ pop:        masterfiles = New FileInfo(timekeeperdir & "\masterfiles.mdb")
 
                     Return responseFromServer
                 Else
-                    If failcnt >= 10 Then
+                    If failcnt >= 1 Then
                         Return responseFromServer
                     End If
                     failcnt += 1
@@ -283,11 +295,11 @@ pop:        masterfiles = New FileInfo(timekeeperdir & "\masterfiles.mdb")
             Dim item As BackupItem = Backup(i)
             If Not item.Message.ToUpper.Contains("SUCCESS") Then
                 workers.AddtoQueue({item.Data, i})
-            Else
-                With item.Data
-                    Dim lstItem As New ListViewItem({ .bio_id, .site, .added_ts, item.Message})
-                    lstLogs.Items.Insert(0, lstItem)
-                End With
+                'Else
+                '    With item.Data
+                '        Dim lstItem As New ListViewItem({ .bio_id, .site, .added_ts, item.Message})
+                '        lstLogs.Items.Insert(0, lstItem)
+                '    End With
             End If
         Next
     End Sub
@@ -299,7 +311,7 @@ pop:        masterfiles = New FileInfo(timekeeperdir & "\masterfiles.mdb")
 
     Private Sub saveConf()
         If conf IsNot Nothing AndAlso Not conf.Path = "" Then
-            ConfigurationStoring.XmlSerialization.WriteToFile(conf.Path, conf)
+            XmlSerialization.WriteToFile(conf.Path, conf)
         End If
     End Sub
 
