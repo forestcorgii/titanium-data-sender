@@ -73,7 +73,7 @@ Partial Class Form1
         '
         'tmBuffer
         '
-        Me.tmBuffer.Interval = 1000
+        Me.tmBuffer.Interval = 10000
         '
         'OPFD
         '
@@ -104,6 +104,7 @@ Partial Class Form1
         '
         'tmResender
         '
+        Me.tmResender.Interval = 10000
         '
         'Form1
         '

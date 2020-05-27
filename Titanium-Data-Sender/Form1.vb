@@ -86,9 +86,10 @@ Public Class Form1
     Private Sub Form1_FormClosing(sender As Object, e As FormClosingEventArgs) Handles Me.FormClosing
         TimekeeperConnection.Close()
         MasterfileConnection.Close()
-        saveConf()
+        'saveConf()
         If _backup IsNot Nothing Then
             XmlSerialization.WriteToFile(BackupFileInfo.FullName, Backup)
+            conf.AddQueues(workers.QueueArgs)
         End If
     End Sub
 
@@ -121,10 +122,11 @@ Public Class Form1
         If Not timekeeper.LastWriteTime = recentModifiedDate Then
             recentModifiedDate = timekeeper.LastWriteTime
             ReadData()
-            If workers.QueueArgs.Count > 0 Then
-                workers.StartWorking()
-            End If
+            'If workers.QueueArgs.Count > 0 Then
+            '    workers.StartWorking()
+            'End If
         End If
+        'If Not workers.IsBusy Then workers.StopWorking()
         tmTracker.Enabled = True
     End Sub
 
@@ -163,7 +165,6 @@ Public Class Form1
     End Sub
 
     Private Sub workers_Worker_RunWorkerCompleted(sender As Object, e As RunWorkerCompletedEventArgs) Handles workers.Worker_RunWorkerCompleted
-        conf.AddQueues(workers.QueueArgs)
         Status.OnQueues = workers.QueueArgs.Count
     End Sub
 
@@ -179,7 +180,7 @@ Public Class Form1
     Dim timekeeper As FileInfo
     Private Function setup() As Boolean
 
-        For Each defaulttimekeeperdir As String In {Path.Combine(Environment.ExpandEnvironmentVariables("%ProgramFiles(x86)%"), "Titanium", "Timekeeper"), "D:\Titanium"}
+        For Each defaulttimekeeperdir As String In {Path.Combine(Environment.ExpandEnvironmentVariables("%ProgramFiles(x86)%"), "Titanium", "Timekeeper"), "D:\Titanium\Timekeeper"}
             masterfiles = New FileInfo(defaulttimekeeperdir & "\masterfiles.mdb")
             timekeeper = New FileInfo(defaulttimekeeperdir & "\timekeeper.mdb")
             If (masterfiles.Exists And timekeeper.Exists) Then
@@ -212,6 +213,8 @@ pop:    If Not (masterfiles.Exists And timekeeper.Exists) Then
 
     Private Sub start()
         tmResender.Interval = 1000 * 15
+        tmBuffer.Interval = 1000 * 2
+        tmTracker.Interval = 1000 * 3
 
         tmResender.Enabled = True
         tmBuffer.Enabled = True
@@ -293,7 +296,7 @@ pop:    If Not (masterfiles.Exists And timekeeper.Exists) Then
     Private Sub Resend()
         For i As Integer = 0 To Backup.Count - 1
             Dim item As BackupItem = Backup(i)
-            If Not item.Message.ToUpper.Contains("SUCCESS") Then
+            If item.Message.ToLower.Contains("remote name could not be resolved") Then
                 workers.AddtoQueue({item.Data, i})
                 'Else
                 '    With item.Data
@@ -309,7 +312,7 @@ pop:    If Not (masterfiles.Exists And timekeeper.Exists) Then
     End Sub
 
 
-    Private Sub saveConf()
+    Private Sub SaveConf()
         If conf IsNot Nothing AndAlso Not conf.Path = "" Then
             XmlSerialization.WriteToFile(conf.Path, conf)
         End If
@@ -387,7 +390,6 @@ pop:    If Not (masterfiles.Exists And timekeeper.Exists) Then
             Test()
         End If
     End Sub
-
 
 
 #End Region
