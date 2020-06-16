@@ -86,7 +86,7 @@ Public Class Form1
     Private Sub Form1_FormClosing(sender As Object, e As FormClosingEventArgs) Handles Me.FormClosing
         TimekeeperConnection.Close()
         MasterfileConnection.Close()
-        'saveConf()
+        SaveConf()
         If _backup IsNot Nothing Then
             XmlSerialization.WriteToFile(BackupFileInfo.FullName, Backup)
             conf.AddQueues(workers.QueueArgs)
@@ -116,17 +116,17 @@ Public Class Form1
         ChangeStatus(Status.ToString & dots)
     End Sub
 
-    Private recentModifiedDate As Date
+    Private timkeeper_modifiedDate As Date
+    Private timekeeper_lock_modifiedDate As Date
     Private Sub tmTracker_Tick(sender As Object, e As EventArgs) Handles tmTracker.Tick
         tmTracker.Enabled = False
-        If Not timekeeper.LastWriteTime = recentModifiedDate Then
-            recentModifiedDate = timekeeper.LastWriteTime
+        If Not File.GetLastWriteTime(timekeeper.FullName) = timkeeper_modifiedDate Then
+            timkeeper_modifiedDate = timekeeper.LastWriteTime
             ReadData()
-            'If workers.QueueArgs.Count > 0 Then
-            '    workers.StartWorking()
-            'End If
+        ElseIf File.Exists(timekeeper_lock.FullName) AndAlso Not file.GetLastWriteTime(timekeeper_lock.FullName) = timekeeper_lock_modifiedDate Then
+            timekeeper_lock_modifiedDate = timekeeper.LastWriteTime
+            ReadData()
         End If
-        'If Not workers.IsBusy Then workers.StopWorking()
         tmTracker.Enabled = True
     End Sub
 
@@ -178,16 +178,18 @@ Public Class Form1
 
     Dim masterfiles As FileInfo
     Dim timekeeper As FileInfo
+    Dim timekeeper_lock As FileInfo
     Private Function setup() As Boolean
 
         For Each defaulttimekeeperdir As String In {Path.Combine(Environment.ExpandEnvironmentVariables("%ProgramFiles(x86)%"), "Titanium", "Timekeeper"), "D:\Titanium\Timekeeper"}
             masterfiles = New FileInfo(defaulttimekeeperdir & "\masterfiles.mdb")
             timekeeper = New FileInfo(defaulttimekeeperdir & "\timekeeper.mdb")
             If (masterfiles.Exists And timekeeper.Exists) Then
-                manager_mdb.manager.Open(masterfiles.FullName, MasterfileConnection)
-                manager_mdb.manager.Open(timekeeper.FullName, TimekeeperConnection)
-                Status.Connected = True
-                Return True
+                Exit For
+                'manager_mdb.manager.Open(masterfiles.FullName, MasterfileConnection)
+                'manager_mdb.manager.Open(timekeeper.FullName, TimekeeperConnection)
+                'Status.Connected = True
+                'Return True
             End If
         Next
 
@@ -205,6 +207,7 @@ pop:    If Not (masterfiles.Exists And timekeeper.Exists) Then
             End If
         End If
 
+        timekeeper_lock = New FileInfo(timekeeperdir & "\timekeeper.ldb")
         manager_mdb.manager.Open(masterfiles.FullName, MasterfileConnection)
         manager_mdb.manager.Open(timekeeper.FullName, TimekeeperConnection)
         Status.Connected = True
