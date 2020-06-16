@@ -121,10 +121,10 @@ Public Class Form1
     Private Sub tmTracker_Tick(sender As Object, e As EventArgs) Handles tmTracker.Tick
         tmTracker.Enabled = False
         If Not File.GetLastWriteTime(timekeeper.FullName) = timkeeper_modifiedDate Then
-            timkeeper_modifiedDate = timekeeper.LastWriteTime
+            timkeeper_modifiedDate = File.GetLastWriteTime(timekeeper.FullName)
             ReadData()
         ElseIf File.Exists(timekeeper_lock.FullName) AndAlso Not file.GetLastWriteTime(timekeeper_lock.FullName) = timekeeper_lock_modifiedDate Then
-            timekeeper_lock_modifiedDate = timekeeper.LastWriteTime
+            timekeeper_lock_modifiedDate = File.GetLastWriteTime(timekeeper_lock.FullName)
             ReadData()
         End If
         tmTracker.Enabled = True
@@ -360,11 +360,11 @@ pop:    If Not (masterfiles.Exists And timekeeper.Exists) Then
                 Else
                     If conf.DepartmentIds.Count > 0 Then
                         Dim departmentID As String = Lookup(id, "deptid")
-                        If departmentID IsNot Nothing AndAlso conf.DepartmentIds.Contains(departmentID) Then
+                        If departmentID Is Nothing OrElse conf.DepartmentIds.Contains(departmentID) = False Then
                             Continue While
                         End If
                     End If
-                    Dim dt As New TitaniumData With {.bio_id = Lookup(id, "idno"), .added_ts = logDatetime, .site = cbSite.Text}
+                    Dim dt As New TitaniumData With {.bio_id = id, .added_ts = logDatetime, .site = cbSite.Text}
                     workers.AddtoQueue({dt, -1})
                 End If
             End While
@@ -379,7 +379,7 @@ pop:    If Not (masterfiles.Exists And timekeeper.Exists) Then
     End Sub
 
     Private Function Lookup(id As String, targetField As String) As String
-        Dim com As New OleDb.OleDbCommand(String.Format("select top 1 `{0}` from `employee` where employeeid={1}", targetField, id), MasterfileConnection)
+        Dim com As New OleDb.OleDbCommand(String.Format("select top 1 `{0}` from `employee` where idno='{1}'", targetField, id), MasterfileConnection)
         Using rdr As OleDb.OleDbDataReader = com.ExecuteReader()
             While rdr.Read
                 Return rdr.Item(targetField)
